@@ -1,0 +1,38 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main, v2]
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - name: Start MongoDB (single-node replica set, for transactions)
+        run: |
+          docker run -d --name mongo -p 27017:27017 mongo:8 --replSet rs0 --bind_ip_all
+          for i in $(seq 1 30); do docker exec mongo mongosh --quiet --eval 'db.runCommand({ping:1}).ok' && break; sleep 2; done
+          docker exec mongo mongosh --quiet --eval "rs.initiate({_id:'rs0',members:[{_id:0,host:'localhost:27017'}]})"
+          for i in $(seq 1 30); do docker exec mongo mongosh --quiet --eval 'db.hello().isWritablePrimary' | grep -q true && break; sleep 2; done
+      - run: pnpm test:int
+        env:
+          MONGODB_TEST_URI: mongodb://localhost:27017/?replicaSet=rs0&directConnection=true
+      - run: pnpm build
+      - name: OpenAPI contract is up to date
+        run: |
+          node dist/openapi.js
+          git diff --exit-code openapi.json || (echo "::error::openapi.json is stale. Run 'pnpm openapi' and commit it." && exit 1)

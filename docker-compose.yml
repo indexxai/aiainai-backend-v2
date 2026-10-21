@@ -1,0 +1,30 @@
+# Local development services: `docker compose up -d`, then `pnpm start:dev` and `pnpm start:worker:dev`.
+services:
+  mongo:
+    image: mongo:8
+    # Single-node replica set: transactions (credits ledger) need it.
+    command: ['--replSet', 'rs0', '--bind_ip_all']
+    ports: ['27017:27017']
+    volumes: ['mongo-data:/data/db']
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'mongosh',
+          '--quiet',
+          '--eval',
+          "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'localhost:27017'}]}).ok }",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    ports: ['6379:6379']
+  inngest:
+    image: inngest/inngest:latest
+    command: ['inngest', 'dev', '-u', 'http://host.docker.internal:4001/api/inngest']
+    ports: ['8288:8288']
+    extra_hosts: ['host.docker.internal:host-gateway']
+volumes:
+  mongo-data:
