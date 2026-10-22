@@ -1,0 +1,103 @@
+# Render Blueprint: the API and the background worker, both from the Dockerfile.
+# Render → New → Blueprint → pick this repo. It asks for each secret once (on the API);
+# the worker reads the same values from the API service.
+
+envVarGroups:
+  - name: aiainai-shared
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: APP_URL
+        value: https://test.jackai.si
+      - key: MONGODB_DB
+        value: jackai
+      - key: EMAIL_FROM
+        value: Jack AI <hello@jackai.si>
+      - key: LOG_LEVEL
+        value: info
+      - key: STORAGE_DRIVER
+        value: gridfs
+      - key: BUSINESS_SPACE
+        value: 'off'
+      - key: EMAIL_VERIFICATION
+        value: 'off'
+
+services:
+  - type: web
+    name: aiainai-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    region: oregon
+    plan: starter
+    healthCheckPath: /api/health
+    domains:
+      - test.api.jackai.si
+    envVars:
+      - fromGroup: aiainai-shared
+      - key: PORT
+        value: '4000'
+      # Secrets: Render asks for these when the Blueprint is first created.
+      - key: MONGODB_URI
+        sync: false
+      - key: BETTER_AUTH_SECRET
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: INNGEST_EVENT_KEY
+        sync: false
+      - key: INNGEST_SIGNING_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: COMPOSIO_API_KEY
+        sync: false
+      - key: BROWSERBASE_API_KEY
+        sync: false
+      - key: BROWSERBASE_PROJECT_ID
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+
+  # A web service (not a background worker) because Inngest calls it over HTTPS at /api/inngest.
+  - type: web
+    name: aiainai-worker
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: node dist/worker.js
+    region: oregon
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: aiainai-shared
+      - key: PORT
+        value: '4001'
+      - key: WORKER_PORT
+        value: '4001'
+      - key: MONGODB_URI
+        fromService: { type: web, name: aiainai-api, envVarKey: MONGODB_URI }
+      - key: BETTER_AUTH_SECRET
+        fromService: { type: web, name: aiainai-api, envVarKey: BETTER_AUTH_SECRET }
+      - key: RESEND_API_KEY
+        fromService: { type: web, name: aiainai-api, envVarKey: RESEND_API_KEY }
+      - key: INNGEST_EVENT_KEY
+        fromService: { type: web, name: aiainai-api, envVarKey: INNGEST_EVENT_KEY }
+      - key: INNGEST_SIGNING_KEY
+        fromService: { type: web, name: aiainai-api, envVarKey: INNGEST_SIGNING_KEY }
+      - key: OPENAI_API_KEY
+        fromService: { type: web, name: aiainai-api, envVarKey: OPENAI_API_KEY }
+      - key: OPENROUTER_API_KEY
+        fromService: { type: web, name: aiainai-api, envVarKey: OPENROUTER_API_KEY }
+      - key: COMPOSIO_API_KEY
+        fromService: { type: web, name: aiainai-api, envVarKey: COMPOSIO_API_KEY }
+      - key: BROWSERBASE_API_KEY
+        fromService: { type: web, name: aiainai-api, envVarKey: BROWSERBASE_API_KEY }
+      - key: BROWSERBASE_PROJECT_ID
+        fromService: { type: web, name: aiainai-api, envVarKey: BROWSERBASE_PROJECT_ID }
+      - key: STRIPE_SECRET_KEY
+        fromService: { type: web, name: aiainai-api, envVarKey: STRIPE_SECRET_KEY }
+      - key: STRIPE_WEBHOOK_SECRET
+        fromService: { type: web, name: aiainai-api, envVarKey: STRIPE_WEBHOOK_SECRET }
