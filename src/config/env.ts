@@ -21,7 +21,11 @@ export const envSchema = z.object({
   BUSINESS_SPACE: z.enum(['on', 'off']).default('off'),
   EMAIL_VERIFICATION: z.enum(['on', 'off']).default('off'),
   /** Public URL of the web app; used for CORS and links in emails. */
-  APP_URL: z.url().default('http://localhost:3000'),
+  // A trailing slash would break CORS (browsers send the origin without one) and double up in links.
+  APP_URL: z
+    .url()
+    .default('http://localhost:3000')
+    .transform((v) => v.replace(/\/+$/, '')),
   MONGODB_URI: z.string().min(1, 'MONGODB_URI is required'),
   MONGODB_DB: z.string().default('aiainai'),
   /** Signs session cookies. Required in production (32+ random characters). */
@@ -30,7 +34,8 @@ export const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   /** Email delivery. Without a key, codes are written to the server log (development only). */
   RESEND_API_KEY: z.string().optional(),
-  EMAIL_FROM: z.string().default('aiainai <hello@aiainai.ai>'),
+  // An empty `EMAIL_FROM=` line falls back to the default too.
+  EMAIL_FROM: optionalSecret.transform((v) => v ?? 'aiainai <hello@aiainai.ai>'),
   /** Model providers. A model is offered only when its provider has a key (see `pnpm models:configure`). */
   OPENAI_API_KEY: optionalSecret,
   ANTHROPIC_API_KEY: optionalSecret,
