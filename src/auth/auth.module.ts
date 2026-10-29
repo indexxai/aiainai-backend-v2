@@ -37,6 +37,7 @@ const DEV_SECRET = 'dev-only-secret-change-me-dev-only-secret-change-me';
         return createAuth({
           database: mongodbAdapter(client.db(config.get('MONGODB_DB', { infer: true })), { client }),
           appUrl: config.get('APP_URL', { infer: true }),
+          trustedOrigins: config.get('TRUSTED_ORIGINS', { infer: true }),
           secret: secret ?? DEV_SECRET,
           production,
           verifyEmail: config.get('EMAIL_VERIFICATION', { infer: true }) === 'on',

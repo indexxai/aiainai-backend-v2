@@ -13,6 +13,14 @@ describe('validateEnv', () => {
     expect(env.APP_URL).toBe('https://test.example.com');
   });
 
+  it('normalizes additional trusted browser origins', () => {
+    const env = validateEnv({
+      MONGODB_URI: 'mongodb://x',
+      TRUSTED_ORIGINS: 'https://test.jackai.si/, https://jackai.si',
+    });
+    expect(env.TRUSTED_ORIGINS).toEqual(['https://test.jackai.si', 'https://jackai.si']);
+  });
+
   it('uses the default sender when EMAIL_FROM is left empty', () => {
     const env = validateEnv({ MONGODB_URI: 'mongodb://x', EMAIL_FROM: '' });
     expect(env.EMAIL_FROM).toBe('aiainai <hello@aiainai.ai>');

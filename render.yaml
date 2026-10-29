@@ -8,6 +8,8 @@ envVarGroups:
       - key: NODE_ENV
         value: production
       - key: APP_URL
+        value: https://jackai.si
+      - key: TRUSTED_ORIGINS
         value: https://test.jackai.si
       - key: MONGODB_DB
         value: jackai

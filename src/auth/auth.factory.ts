@@ -8,6 +8,8 @@ export interface AuthDeps {
   database: BetterAuthOptions['database'];
   /** Public URL of the web app. Auth routes are reached through it at /api/auth. */
   appUrl: string;
+  /** Other browser origins allowed to call auth (for example, the staging web app). */
+  trustedOrigins?: string[];
   secret: string;
   production: boolean;
   /**
@@ -43,7 +45,7 @@ export function createAuth(deps: AuthDeps) {
     baseURL: deps.appUrl,
     basePath: '/api/auth',
     secret: deps.secret,
-    trustedOrigins: [deps.appUrl],
+    trustedOrigins: [...new Set([deps.appUrl, ...(deps.trustedOrigins ?? [])])],
     database: deps.database,
     emailAndPassword: {
       enabled: true,

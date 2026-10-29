@@ -5,7 +5,7 @@ import { createAuth } from './auth.factory.js';
  * The real sign-up / verify / sign-in flow, run against Better Auth with an in-memory store.
  */
 let n = 0;
-function setup(verifyEmail = true) {
+function setup(verifyEmail = true, trustedOrigins: string[] = []) {
   // Each test is its own visitor, so sign-up rate limits don't carry over between tests.
   const ip = `10.0.0.${++n}`;
   const codes: Record<string, string> = {};
@@ -13,6 +13,7 @@ function setup(verifyEmail = true) {
   const auth = createAuth({
     database: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
     appUrl: 'http://localhost:3000',
+    trustedOrigins,
     secret: 'test-secret-test-secret-test-secret-1234',
     production: false,
     verifyEmail,
@@ -23,13 +24,13 @@ function setup(verifyEmail = true) {
       created.push(u.email);
     },
   });
-  const call = (path: string, body?: unknown, cookie?: string) =>
+  const call = (path: string, body?: unknown, cookie?: string, origin = 'http://localhost:3000') =>
     auth.handler(
       new Request(`http://localhost:3000/api/auth${path}`, {
         method: body === undefined ? 'GET' : 'POST',
         headers: {
           'content-type': 'application/json',
-          origin: 'http://localhost:3000',
+          origin,
           'x-forwarded-for': ip,
           ...(cookie ? { cookie } : {}),
         },
@@ -46,6 +47,18 @@ const cookieFrom = (res: Response) =>
     .join('; ');
 
 describe('sign-up and sign-in', () => {
+  it('accepts a sign-in request from an explicitly trusted test origin', async () => {
+    const { call } = setup(true, ['https://test.jackai.si']);
+    const res = await call(
+      '/sign-in/email',
+      { email: 'nobody@example.com', password: 'whatever-123' },
+      undefined,
+      'https://test.jackai.si',
+    );
+    // The credentials are rejected, rather than the origin.
+    expect(res.status).toBe(401);
+  });
+
   it('signs up, verifies with the emailed code, then signs in', async () => {
     const { call, codes, created } = setup();
     const email = 'sara@example.com';

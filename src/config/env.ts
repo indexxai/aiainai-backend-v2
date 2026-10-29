@@ -26,6 +26,25 @@ export const envSchema = z.object({
     .url()
     .default('http://localhost:3000')
     .transform((v) => v.replace(/\/+$/, '')),
+  /** Additional browser origins permitted to call the auth API (comma-separated). */
+  TRUSTED_ORIGINS: z
+    .string()
+    .optional()
+    .transform((value, ctx) => {
+      if (!value?.trim()) return [];
+      const origins = value
+        .split(',')
+        .map((origin) => origin.trim().replace(/\/+$/, ''))
+        .filter(Boolean);
+      for (const origin of origins) {
+        try {
+          if (new URL(origin).origin !== origin) throw new Error();
+        } catch {
+          ctx.addIssue({ code: 'custom', message: `must contain only origins; received ${origin}` });
+        }
+      }
+      return [...new Set(origins)];
+    }),
   MONGODB_URI: z.string().min(1, 'MONGODB_URI is required'),
   MONGODB_DB: z.string().default('aiainai'),
   /** Signs session cookies. Required in production (32+ random characters). */
