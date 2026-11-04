@@ -63,7 +63,14 @@ console.log(`Jack Personal with no end date + ${credits.toLocaleString()} top-up
 
 for (const email of emails) {
   let user = await users.findOne({ email });
-  console.log(`• ${email}: account ${user ? 'exists' : 'missing'}.`);
+  if (user) {
+    const current = await workspaces.findOne({ ownerUserId: String(user._id), kind: 'personal', deletedAt: null }).lean();
+    const bal = current ? await creditsService.balance(current._id) : null;
+    const plan = current ? `${current.plan === 'pro' ? 'Jack Personal' : 'Jack Free'}${current.plan === 'pro' ? (current.proUntil ? ` until ${current.proUntil.toISOString().slice(0, 10)}` : ', no end date') : ''}` : 'no workspace';
+    console.log(`• ${email}: account exists; ${plan}; credits ${bal ? `${bal.plan.toLocaleString()} plan + ${bal.topup.toLocaleString()} top-up` : 'none'}.`);
+  } else {
+    console.log(`• ${email}: account missing.`);
+  }
   if (!apply) continue;
 
   if (!user) {
