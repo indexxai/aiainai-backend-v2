@@ -20,11 +20,12 @@ async function bootstrap() {
   const config = app.get<ConfigService<Env, true>>(ConfigService);
   configureApp(app, app.get<Auth>(AUTH), {
     appUrl: config.get('APP_URL', { infer: true }),
+    trustedOrigins: config.get('TRUSTED_ORIGINS', { infer: true }),
     businessSpace: config.get('BUSINESS_SPACE', { infer: true }) === 'on',
   });
-  // Only the web app's origin may call the API from a browser.
+  // Only the web app's origins may call the API from a browser.
   app.enableCors({
-    origin: config.get('APP_URL', { infer: true }),
+    origin: [config.get('APP_URL', { infer: true }), ...config.get('TRUSTED_ORIGINS', { infer: true })],
     credentials: true,
     exposedHeaders: ['x-request-id'],
   });

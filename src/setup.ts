@@ -15,11 +15,11 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
  * every cross-site (and same-site non-GET) request, so a mismatched Origin on a change is refused.
  * Requests without an Origin (server-to-server, curl) carry no browser cookies by accident.
  */
-export function sameOriginOnly(appUrl: string) {
-  const allowed = new URL(appUrl).origin;
+export function sameOriginOnly(appUrl: string, trustedOrigins: string[] = []) {
+  const allowed = new Set([new URL(appUrl).origin, ...trustedOrigins]);
   return (req: Request, res: Response, next: NextFunction) => {
     const origin = req.headers.origin;
-    if (SAFE_METHODS.has(req.method) || !origin || origin === allowed) return next();
+    if (SAFE_METHODS.has(req.method) || !origin || allowed.has(origin)) return next();
     res.status(403).json({
       error: { code: 'forbidden', message: 'This request came from another site.', requestId: 'unknown' },
     });
@@ -30,7 +30,7 @@ export function sameOriginOnly(appUrl: string) {
 export function configureApp(
   app: NestExpressApplication,
   auth?: Auth,
-  opts: { appUrl?: string; businessSpace?: boolean } = {},
+  opts: { appUrl?: string; trustedOrigins?: string[]; businessSpace?: boolean } = {},
 ): void {
   app.setGlobalPrefix('api');
   app.use(helmet());
@@ -47,7 +47,7 @@ export function configureApp(
       });
     });
   } else app.use(spaceMiddleware);
-  if (opts.appUrl) app.use('/api', sameOriginOnly(opts.appUrl));
+  if (opts.appUrl) app.use('/api', sameOriginOnly(opts.appUrl, opts.trustedOrigins));
   // Documents may hold up to 2,000,000 characters, so a full save can be a few MB of JSON.
   // Only JSON is accepted: no form posts, so a plain HTML form on another site can't call the API.
   // Stripe signs the exact bytes it sends, so its webhook gets the raw body (the JSON parser

@@ -26,7 +26,7 @@ export const envSchema = z.object({
     .url()
     .default('http://localhost:3000')
     .transform((v) => v.replace(/\/+$/, '')),
-  /** Additional browser origins permitted to call the auth API (comma-separated). */
+  /** Additional browser origins permitted to call the API, e.g. a staging site (comma-separated). */
   TRUSTED_ORIGINS: z
     .string()
     .optional()
